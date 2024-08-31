@@ -1,6 +1,6 @@
-(defproject wizard.contextual-resolution "0.1.0-SNAPSHOT"
+(defproject wizard.contextually "0.1.0-SNAPSHOT"
   :description "FIXME: write description"
-  :url "https://github.com/wizard-enterprises/wizard.contextual-resolution"
+  :url "https://github.com/wizard-enterprises/wizard.contextually"
   :min-lein-version "2.0.0"
 
   :plugins [[lein-git-deps "0.0.2"]]

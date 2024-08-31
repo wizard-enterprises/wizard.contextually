@@ -1,4 +1,4 @@
-(ns wizard.contextual-resolution
+(ns wizard.contextually
   (:use wizard.toolbelt)
   (:refer-clojure :exclude [var])
   (:require [clojure
