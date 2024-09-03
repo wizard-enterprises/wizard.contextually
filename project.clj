@@ -9,7 +9,6 @@
   [["https://github.com/wizard-enterprises/wizard.toolbelt.git" "main"]
    ["https://github.com/wizard-enterprises/wizard.toolbelt.test.git" "main"]]
   :dependencies [[org.clojure/clojure "1.11.1"]
-                 [org.clojure/clojurescript "1.11.132"]
                  [potemkin "0.4.6"]]
 
   :profiles {:dev  {:dependencies [[midje "1.10.10"]]
