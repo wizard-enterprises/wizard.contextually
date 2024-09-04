@@ -1,4 +1,4 @@
-(ns wizard.contextually.contextuality-test
+(ns wizard.contextually.contextual-resolution-test
   (:use wizard.toolbelt.test.midje wizard.toolbelt)
   (:require [wizard.contextually :as ctx]
             [clojure.math :as math]))
