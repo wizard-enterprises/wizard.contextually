@@ -61,7 +61,7 @@
       (ctx/resolve-in
        ctx
        (ctx/exfer-on
-        [(-> ctx :a inc) (-> ctx :b inc)]
+        [(-> ctx :a inc) (ctx/exfer :b inc)]
         (fn [[a b]]
           (* a b))))
       => 12
