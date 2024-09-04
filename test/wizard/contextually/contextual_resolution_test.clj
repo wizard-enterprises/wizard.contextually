@@ -55,6 +55,9 @@
           (ctx/inform
            {:a inc :b inc}
            :a :b (fn [a b] (+ a b)))]
+
+      (ctx/resolve-in ctx (ctx/exfer-on nil nil?)) => true
+
       (ctx/resolve-in
        ctx
        (ctx/exfer-on

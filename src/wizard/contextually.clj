@@ -92,10 +92,13 @@
                                :source      source}))))))))
 
 (defn- resolve-resolvable-in-ctx
-  [ctx {:keys [ctx-var ctx-vars exfer based-on] :or {exfer identity}}]
+  [ctx {:keys [ctx-var ctx-vars exfer based-on]
+        :or   {exfer identity}
+        :as   resolvable}]
   (let [args (map #(resolve-ctx-var-in-ctx ctx %)
                   (or ctx-vars [ctx-var]))
-        args (if based-on (prepend based-on args) args)]
+        args (if (contains? resolvable :based-on)
+               (prepend based-on args) args)]
     (apply exfer args)))
 
 (defn- resolve-ctx-informing-resolvable
@@ -133,18 +136,21 @@
 (defn- walk-and-resolve-when-resolvable
   [ctx form]
   (let [ctx (assoc ctx :walk-and-resolve-when-resolvable
-                 walk-and-resolve-when-resolvable)]
+                   walk-and-resolve-when-resolvable)]
     (walk/prewalk
      (fn [x]
        (let [[ctx x] (inform-ctx-based-on ctx x)]
          (if-not (marked-for-resolve? x)
            x
            (cond
-             (marked-for-ctx-informing? x) (let [ctx (inform-ctx ctx (:informing x))]
-                                             (walk-and-resolve-when-resolvable
-                                              ctx (resolve-ctx-informing-resolvable ctx x)))
-             (marked-for-resolve? x)       (walk-and-resolve-when-resolvable
-                                            ctx (resolve-resolvable-in-ctx ctx x))))))
+             (marked-for-ctx-informing? x)
+             (let [ctx (inform-ctx ctx (:informing x))]
+               (walk-and-resolve-when-resolvable
+                ctx (resolve-ctx-informing-resolvable ctx x)))
+
+             (marked-for-resolve? x)
+             (walk-and-resolve-when-resolvable
+              ctx (resolve-resolvable-in-ctx ctx x))))))
      form)))
 
 (defn resolve-throughout
