@@ -99,6 +99,11 @@
     (fact
       "with ad-hoc informing"
       (let [ctx {:a 1 :b 99}]
+        (ctx/resolve-in ctx (ctx/inform {:a 2} 15)) => 15
+        (ctx/resolve-in ctx (ctx/inform {:a 2} (fn [] 15))) => 15
+        (ctx/resolve-in ctx (ctx/inform {:a 2} :a identity)) => 2
+        (ctx/resolve-in ctx (ctx/inform {:a 2} (ctx/var :a))) => 2
+
         (ctx/resolve-throughout
          ctx
          {:a (comp inc inc) :b 4 :c 2}

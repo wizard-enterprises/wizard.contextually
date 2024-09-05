@@ -99,7 +99,9 @@
                   (or ctx-vars [ctx-var]))
         args (if (contains? resolvable :based-on)
                (prepend based-on args) args)]
-    (apply exfer args)))
+    (if (and (empty? args) (not (fn? exfer)))
+      exfer
+      (apply exfer args))))
 
 (defn- resolve-ctx-informing-resolvable
   [ctx {:keys [informing] :as r}]
