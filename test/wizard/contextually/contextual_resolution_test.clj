@@ -56,7 +56,11 @@
            {:a inc :b inc}
            :a :b (fn [a b] (+ a b)))]
 
-      (ctx/resolve-in ctx (ctx/exfer-on nil nil?)) => true
+      (let [x (ctx/exfer-on nil nil?)]
+        (and (map? x) (ctx/exferrence? x)) => true
+        (ctx/resolve-in ctx x) => true
+        (ctx/informing-exferrence? x) => false
+        (ctx/informing-exferrence? (ctx/inform {} x)) => true)
 
       (ctx/resolve-in
        ctx

@@ -8,7 +8,7 @@
 (defn- mark-for-resolve
   [obj]
   (vary-meta obj assoc :resolve? true))
-(defn- marked-for-resolve?
+(defn exferrence?
   [obj]
   (= true (:resolve? (meta obj))))
 
@@ -16,7 +16,7 @@
   [obj]
   (mark-for-resolve
    (vary-meta obj assoc :informing? true)))
-(defn- marked-for-ctx-informing?
+(defn informing-exferrence?
   [obj]
   (= true (:informing? (meta obj))))
 
@@ -120,7 +120,7 @@
 
 (defn- inform-ctx-based-on
   [ctx x]
-  (if-not (and (marked-for-resolve? x) (contains? x :based-on))
+  (if-not (and (exferrence? x) (contains? x :based-on))
     [ctx x]
     (let [based-on  (:based-on x)
           inf-count (count @(::informings ctx))
@@ -142,15 +142,15 @@
     (walk/prewalk
      (fn [x]
        (let [[ctx x] (inform-ctx-based-on ctx x)]
-         (if-not (marked-for-resolve? x)
+         (if-not (exferrence? x)
            x
            (cond
-             (marked-for-ctx-informing? x)
+             (informing-exferrence? x)
              (let [ctx (inform-ctx ctx (:informing x))]
                (walk-and-resolve-when-resolvable
                 ctx (resolve-ctx-informing-resolvable ctx x)))
 
-             (marked-for-resolve? x)
+             (exferrence? x)
              (walk-and-resolve-when-resolvable
               ctx (resolve-resolvable-in-ctx ctx x))))))
      form)))
