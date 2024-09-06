@@ -17,12 +17,12 @@
        ctx
        {:a (comp inc inc) :b 4 :c 2}
        (ctx/exfer :a :b :c *))
-      => {:resolved 24 :ctx {:a 3 :b 4 :c 2}}))
+      => [{:a 3 :b 4 :c 2} 24]))
 
   (fact
     "with informing in form"
     (let [ctx {:a 1 :b 2 :c 3 :z 8}
-          {:keys [ctx resolved]}
+          [ctx resolved]
           (ctx/resolve-throughout
            ctx
            (ctx/exfer
@@ -41,7 +41,7 @@
   (fact
     "informing w exferred value"
     (let [ctx {:a 2 :z 5}
-          {:keys [ctx resolved]}
+          [ctx resolved]
           (ctx/resolve-throughout
            ctx
            (ctx/inform

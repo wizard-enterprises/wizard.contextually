@@ -10,6 +10,7 @@
   (resolving/resolve-in ctx form))
 
 (defn resolve-throughout
+  "returns a vector with (1) `ctx` as informed by resolving (2) `form`"
   ([ctx form]
    (resolving/resolve-throughout ctx form))
   ([ctx informing form]

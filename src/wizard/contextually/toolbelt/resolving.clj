@@ -133,9 +133,8 @@
          informings @(::informings ctx)
          ctx        (reduce inform-ctx ctx informings)
          ctx        (clean-ctx-of-intermediary-vals ctx)]
-     {:ctx      ctx
-      :resolved resolved})))
+     [ctx resolved])))
 
 (defn resolve-in
   [ctx form]
-  (:resolved (resolve-throughout ctx form)))
+  (last (resolve-throughout ctx form)))
