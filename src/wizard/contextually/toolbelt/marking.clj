@@ -19,15 +19,15 @@
   [obj]
   (= true (:informing? (meta obj))))
 
-(defn var
-  [ctx-var]
-  (mark-for-exferring {:ctx-var ctx-var}))
+(defn value
+  [ctx-val]
+  (mark-for-exferring {:ctx-val ctx-val}))
 
 (defn exfer
   [& args]
   (let [exfer    (last args)
-        ctx-vars (drop-last 1 args)]
-    (mark-for-exferring {:ctx-vars ctx-vars :exfer exfer})))
+        ctx-vals (drop-last 1 args)]
+    (mark-for-exferring {:ctx-vals ctx-vals :exfer exfer})))
 
 (defn exfer-on
   [exferrence & args]

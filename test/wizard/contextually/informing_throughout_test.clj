@@ -11,7 +11,7 @@
       (resolve (ctx/inform {:a 2} 15)) => 15
       (resolve (ctx/inform {:a 2} (fn [] 15))) => 15
       (resolve (ctx/inform {:a 2} :a identity)) => 2
-      (resolve (ctx/inform {:a 2} (ctx/var :a))) => 2
+      (resolve (ctx/inform {:a 2} (ctx/value :a))) => 2
 
       (ctx/resolve-throughout
        ctx

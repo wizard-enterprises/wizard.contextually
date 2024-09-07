@@ -26,9 +26,9 @@
   [obj]
   (marking/informing-exferrence? obj))
 
-(defn var
-  [ctx-var]
-  (marking/var ctx-var))
+(defn value
+  [ctx-val]
+  (marking/value ctx-val))
 
 (defn exfer
   [& args]

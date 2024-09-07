@@ -4,22 +4,22 @@
              [string :as str]
              [walk :as walk]]))
 
-(defn- ctx-var-path
-  [ctx-var]
+(defn- ctx-val-path
+  [ctx-val]
   (cond
-    (keyword? ctx-var) [ctx-var]
-    (string? ctx-var)  (it-> ctx-var
+    (keyword? ctx-val) [ctx-val]
+    (string? ctx-val)  (it-> ctx-val
                          (str/split it #"\.")
                          (map keyword it)
                          (vec it))
-    :else              ctx-var))
+    :else              ctx-val))
 
-(defn- ctx-var-name
-  [ctx-var]
+(defn- ctx-val-name
+  [ctx-val]
   (cond
-    (string? ctx-var)  ctx-var
-    (keyword? ctx-var) (name ctx-var)
-    :else              (->> ctx-var
+    (string? ctx-val)  ctx-val
+    (keyword? ctx-val) (name ctx-val)
+    :else              (->> ctx-val
                             (map name)
                             (str/join "."))))
 
@@ -39,28 +39,28 @@
   [ctx]
   (dissoc ctx ::informings :walk-and-resolve-when-resolvable))
 
-(defn- resolve-ctx-var-in-ctx
-  [ctx ctx-var]
-  (if (= :ctx ctx-var)
+(defn- resolve-ctx-val-in-ctx
+  [ctx ctx-val]
+  (if (= :ctx ctx-val)
     (clean-ctx-of-intermediary-vals ctx)
-    (let [ctx-var (ctx-var-path ctx-var)
-          source  (fetch-in ctx [(first ctx-var)])]
-      (try (if (> (count ctx-var) 1)
-             (fetch-in source (rest ctx-var))
+    (let [ctx-val (ctx-val-path ctx-val)
+          source  (fetch-in ctx [(first ctx-val)])]
+      (try (if (> (count ctx-val) 1)
+             (fetch-in source (rest ctx-val))
              source)
            (catch clojure.lang.ExceptionInfo e
-             (throw (ex-info (str "Could not resolve ctx var: " (ctx-var-name ctx-var))
+             (throw (ex-info (str "Could not resolve ctx value: " (ctx-val-name ctx-val))
                              (merge
                               (ex-data e)
-                              {:source-name (first ctx-var)
+                              {:source-name (first ctx-val)
                                :source      source}))))))))
 
 (defn- resolve-resolvable-in-ctx
-  [ctx {:keys [ctx-var ctx-vars exfer based-on]
+  [ctx {:keys [ctx-val ctx-vals exfer based-on]
         :or   {exfer identity}
         :as   resolvable}]
-  (let [args (map #(resolve-ctx-var-in-ctx ctx %)
-                  (or ctx-vars [ctx-var]))
+  (let [args (map #(resolve-ctx-val-in-ctx ctx %)
+                  (or ctx-vals [ctx-val]))
         args (if (contains? resolvable :based-on)
                (prepend based-on args) args)]
     (if (and (empty? args) (not (fn? exfer)))
