@@ -41,3 +41,15 @@
 (defn inform
   [informing & args]
   (apply marking/inform informing args))
+
+(defn variate-by
+  [variable & conds]
+  (apply marking/variate-by variable conds))
+
+(defn exfer-all
+  [& things-then-exfer-fn]
+  (apply marking/exfer-all things-then-exfer-fn))
+
+(defn fallback
+  [fallback form]
+  (exfer-on form #(or % fallback)))
