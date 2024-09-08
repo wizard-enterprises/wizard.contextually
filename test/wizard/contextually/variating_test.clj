@@ -1,10 +1,6 @@
-(ns wizard.contextually.variating-by-test
+(ns wizard.contextually.variating-test
   (:use wizard.toolbelt.test.midje wizard.toolbelt)
   (:require [wizard.contextually :as ctx]))
-
-(defn resolves-identically
-  [& forms]
-  (let [](fact "resol")))
 
 (facts
   "about variating by"
@@ -55,7 +51,7 @@
 
     (fact
       "variating variation by predicate"
-      (resolve (by-x [#(= \5) 15])) => 15)
+      (resolve (by-x [#(= % \5) 15])) => 15)
 
     (fact
       "exfers factory variation"
@@ -78,4 +74,38 @@
         :z
         [[\5 \9 \1 \2 {:a \1 :b \2}] 100
          #(do % false) 0]))
-      => 100)))
+      => 100)
+
+    (facts
+     "about variating on"
+     (let [by-x (by-x {\3 \_ \5 100 \7 \H})]
+       (ctx/variating-exferrence? by-x) => true
+       (resolves-identically
+        by-x
+        (ctx/exfer-on by-x identity)
+        (ctx/variate-on by-x)
+        (ctx/variate-on by-x \5)
+        (ctx/variate-on by-x _)) => 100
+
+       (resolve (ctx/variate-on by-x \3)) => \_
+       (resolve (ctx/variate-on by-x \7)) => \H))
+
+    (let [by-xy (ctx/variate-by
+                 :x :y
+                 [[\3 \3] -5
+                  [\5 \5] -5
+                  [\9 \9] -5
+                  [\5 \9] 100])]
+       (resolves-identically
+        (ctx/variate-on by-xy)
+        (ctx/variate-on by-xy _)
+        (ctx/variate-on by-xy \5)
+        (ctx/variate-on by-xy \5 _)
+        (ctx/variate-on by-xy _ \9)
+        (ctx/variate-on by-xy \5 \9)
+        (ctx/variate-on by-xy _ _)) => 100
+
+       (resolves-identically
+        (ctx/variate-on by-xy \3 \3)
+        (ctx/variate-on by-xy _ \5)
+        (ctx/variate-on by-xy \9 _)) => -5)))

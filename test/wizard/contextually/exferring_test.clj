@@ -36,13 +36,23 @@
           with-a-b-incd-summed
           (ctx/inform
            {:a inc :b inc}
-           :a :b (fn [a b] (+ a b)))]
+           :a :b (fn [a b] (+ a b)))
+          both (fn [a b] [a b])]
 
       (let [x (ctx/exfer-on nil nil?)]
         (and (map? x) (ctx/exferrence? x)) => true
         (resolve x) => true
         (ctx/informing-exferrence? x) => false
         (ctx/informing-exferrence? (ctx/inform {} x)) => true)
+
+      (resolve (ctx/exfer-on (ctx/value :a) :b both)) => [2 3]
+      (resolve (ctx/exfer-on [(ctx/value :a)] :b both)) => [[2] 3]
+      (resolve (ctx/exfer-on {:a (ctx/value :a)} :b both)) => [{:a 2} 3]
+
+      (resolve (ctx/exfer-all 1 2 3 +)) => 6
+      (resolve (ctx/exfer-all 1 (ctx/value :a) 3 +)) => 6
+      (resolve (ctx/exfer-all 1 2 (ctx/exfer :b identity) +)) => 6
+      (resolve (ctx/exfer-all :a (ctx/exfer-all :a :b *) :b *)) => 36
 
       (resolve
        (ctx/exfer-on

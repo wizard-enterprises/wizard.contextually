@@ -1,6 +1,9 @@
 (ns wizard.contextually.toolbelt.resolving
-  (:use wizard.toolbelt wizard.contextually.toolbelt.marking)
-  (:require [clojure
+  (:use wizard.toolbelt)
+  (:require [wizard.contextually.toolbelt
+             [marking :as marking]
+             [exferring :as exferring]]
+            [clojure
              [string :as str]
              [walk :as walk]]))
 
@@ -60,7 +63,7 @@
         :or   {exfer identity}
         :as   resolvable}]
   (let [args (map #(resolve-ctx-val-in-ctx ctx %)
-                  (or ctx-vals [ctx-val]))
+                  (or ctx-vals (when ctx-val [ctx-val])))
         args (if (contains? resolvable :based-on)
                (prepend based-on args) args)]
     (if (and (empty? args) (not (fn? exfer)))
@@ -72,6 +75,32 @@
   (swap! (fetch-in ctx [::informings]) append informing)
   (resolve-resolvable-in-ctx ctx r))
 
+(defn- default-variator
+  [variable opts]
+  (->> (if->> opts map? (into ()) (partition 2))
+       (some
+        (fn [[opt result]]
+          (when (if (fn? opt) (opt variable) (= variable opt))
+            (if (fn? result) (result variable) result))))))
+
+(defn- resolve-variating-resolvable-in-ctx
+  [ctx {:keys [variables opts]}]
+   (resolve-resolvable-in-ctx
+    ctx
+    (marking/exfer-on
+     ((:walk-and-resolve-when-resolvable ctx)
+      ctx
+      (resolve-resolvable-in-ctx
+       ctx
+       (apply exferring/exfer-all (append variables list))))
+     (fn [[& variables]]
+       (if (fn? opts)
+         (apply opts variables)
+         (let [v (if (= 1 (count variables))
+                   (first variables)
+                   (vec variables))]
+           (default-variator v opts)))))))
+
 (defn- add-informing
   [x informing]
   (update x :informing
@@ -82,9 +111,9 @@
               [%])
             informing)))
 
-(defn- inform-ctx-based-on
+(defn- resolve-base-throughout
   [ctx x]
-  (if-not (and (exferrence? x) (contains? x :based-on))
+  (if-not (contains? x :based-on)
     [ctx x]
     (let [based-on  (:based-on x)
           inf-count (count @(::informings ctx))
@@ -101,20 +130,24 @@
 
 (defn- walk-and-resolve-when-resolvable
   [ctx form]
-  (let [ctx (assoc ctx :walk-and-resolve-when-resolvable
-                   walk-and-resolve-when-resolvable)]
+  (let [ctx (-> ctx (assoc :walk-and-resolve-when-resolvable
+                           walk-and-resolve-when-resolvable))]
     (walk/prewalk
      (fn [x]
-       (let [[ctx x] (inform-ctx-based-on ctx x)]
-         (if-not (exferrence? x)
-           x
+       (if-not (marking/exferrence? x)
+         x
+         (let [[ctx x] (resolve-base-throughout ctx x)]
            (cond
-             (informing-exferrence? x)
+             (marking/informing-exferrence? x)
              (let [ctx (inform-ctx ctx (:informing x))]
                (walk-and-resolve-when-resolvable
                 ctx (resolve-ctx-informing-resolvable ctx x)))
 
-             (exferrence? x)
+             (marking/variating-exferrence? x)
+             (walk-and-resolve-when-resolvable
+              ctx (resolve-variating-resolvable-in-ctx ctx x))
+
+             (marking/exferrence? x)
              (walk-and-resolve-when-resolvable
               ctx (resolve-resolvable-in-ctx ctx x))))))
      form)))
