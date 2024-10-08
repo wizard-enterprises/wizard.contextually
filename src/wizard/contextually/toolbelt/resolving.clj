@@ -153,20 +153,17 @@
      form)))
 
 (defn resolve-throughout
-  ([ctx form]
-   (resolve-throughout ctx {} form))
-  ([ctx informing form]
+  [ctx form]
    (let [ctx        (-> ctx
                         (assoc
                          ::informings (atom [])
                          :walk-and-resolve-when-resolvable
                          walk-and-resolve-when-resolvable))
-         ctx        (inform-ctx ctx informing)
          resolved   (walk-and-resolve-when-resolvable ctx form)
          informings @(::informings ctx)
          ctx        (reduce inform-ctx ctx informings)
          ctx        (clean-ctx-of-intermediary-vals ctx)]
-     [ctx resolved])))
+     [ctx resolved]))
 
 (defn resolve-in
   [ctx form]
