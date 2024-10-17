@@ -1,2 +1,6 @@
 #kaocha/v1
-{:reporter [kaocha.report/documentation]}
+{:reporter [kaocha.report/documentation]
+ :plugins  [:cloverage]
+ :cloverage/opts
+ {:html? true
+  :lcov? true}}
