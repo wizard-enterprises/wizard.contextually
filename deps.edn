@@ -2,7 +2,9 @@
  {org.clojure/clojure {:mvn/version "1.12.0"}
   hub/wizard.toolbelt {:local/root "../wizard.toolbelt"}}
  :aliases
- {:test
+ {:dev
+  {:extra-paths ["dev"]}
+  :test
   {:extra-paths ["test"]
    :extra-deps
    {hub/wizard.toolbelt.test {:local/root "../wizard.toolbelt.test"}}
