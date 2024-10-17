@@ -5,64 +5,83 @@
 
 (deftest test-exferring-from-context
   (testing "exferring ctx values with functions"
-    (are [r e-fn] (is (= r (ctx/resolve-in
-                            {:a 2}
-                            (ctx/exfer :a e-fn))))
+    (are [r e-fn] (is (= r (ctx/resolve-in {:a 2}
+                             (ctx/exfer e-fn :a))))
       5 (partial - 7)
       4 #(int (math/pow % %)))
 
     (are [r e-fn] (is (= r (ctx/resolve-in
-                            {:x 5 :y 2}
-                            (ctx/exfer :x :y e-fn))))
+                               {:x 5 :y 2}
+                             (ctx/exfer e-fn :x :y))))
       7  +
       3  -
       25 (comp int math/pow)))
 
   (testing "exferrences returning exferrences"
     (let [resolve (partial ctx/resolve-in {:a 11 :b 21 :c 31})]
+      (is (= 63 (resolve (ctx/exfer + :a :b :c))))
       (is (= 63 (resolve
                  (ctx/exfer
-                  :a (fn [a]
+                     (fn [a]
                        (ctx/exfer
-                        :b (fn [b]
+                           (fn [b]
                              (ctx/exfer
-                              :c (fn [c]
-                                   (+ a b c))))))))))))
+                                 (fn [c] (+ a b c))
+                               :c)) :b)) :a))))))
+
+  (testing "exferrences with fallback"
+    (let [resolve (partial ctx/resolve-in {:a 150})]
+      (is (thrown? Exception (resolve (ctx/value :z))))
+      (is (= 15 (resolve (ctx/fallback 15 (ctx/value :z)))))
+      (is (= 150 (resolve (ctx/fallback (ctx/value :a) (ctx/value :z)))))))
 
   (testing "exferring based on existing exferrence"
-    (let [ctx     {:a 2 :b 3}
+    (let [ctx     {:a 2 :b 3 :x {:y {:z 5}}}
           resolve (partial ctx/resolve-in ctx)]
 
       (testing "nil base smoke tests"
-        (let [x (ctx/exfer-on nil nil?)]
+        (let [x (ctx/exfer-on nil? nil)]
           (is (= true (and (map? x) (ctx/exferrence? x))))
           (is (= true (resolve x)))
           (is (= false (ctx/informing-exferrence? x)))
           (is (= true (ctx/informing-exferrence? (ctx/inform {} x))))))
 
       (testing "exferrence bases, direct and nested and extended"
-        (are [r base] (is (= r (resolve (ctx/exfer-on base :b vector))))
+        (are [r base] (is (= r (resolve (ctx/exfer-on vector base (ctx/value :b)))))
           [2 3]      (ctx/value :a)
           [[2] 3]    [(ctx/value :a)]
           [{:a 2} 3] {:a (ctx/value :a)}
-          [12 3]     (ctx/exfer-on
-                      [(-> ctx :a inc) (ctx/exfer :b inc)]
-                      (fn [[a b]] (* a b)))))
+
+          [[:x :y :z] 3] (ctx/exfer-on identity [:x :y :z])
+          [5 3]          (ctx/exfer identity [:x :y :z])
+
+          [12 3] (ctx/exfer-on
+                   (fn [a b] (* a b))
+                   (-> ctx :a inc) (ctx/exfer inc :b))
+          [12 3] (ctx/exfer-on
+                   (fn [[a b]] (* a b))
+                   [(-> ctx :a inc) (ctx/exfer inc :b)])
+          [12 3] (ctx/exfer-on
+                   (fn [{:keys [a b]}] (* a b))
+                   {:a (-> ctx :a inc) :b (ctx/exfer inc :b)})))
 
       (testing "exferring on all exferrences and variables"
         (are [r e] (is (= r (resolve e)))
-          6  (ctx/exfer-all 1 2 3 +)
-          6  (ctx/exfer-all 1 (ctx/value :a) 3 +)
-          6  (ctx/exfer-all 1 2 (ctx/exfer :b identity) +)
-          36 (ctx/exfer-all :a (ctx/exfer-all :a :b *) :b *)))
+          6  (ctx/exfer-on + 1 2 3)
+          6  (ctx/exfer-on + 1 (ctx/value :a) 3)
+          6  (ctx/exfer-on + 1 2 (ctx/exfer identity :b))
+          36 (ctx/exfer-on *
+               (ctx/value :a)
+               (ctx/exfer * :a :b)
+               (ctx/value :b))))
 
-      (let [mul-a-by-10          (ctx/exfer :a #(* 10 %))
-            mul-b-by-2           (ctx/exfer :b #(* 2 %))
-            add-to-a             #(ctx/exfer :a (partial + %))
+      (let [mul-a-by-10          (ctx/exfer #(* 10 %) :a)
+            mul-b-by-2           (ctx/exfer #(* 2 %) :b)
+            add-to-a             #(ctx/exfer (partial + %) :a)
             with-a-b-incd-summed (ctx/inform
-                                  {:a inc :b inc}
-                                  :a :b (fn [a b] (+ a b)))]
+                                     {:a inc :b inc}
+                                   (ctx/exfer + :a :b))]
         (are [r e] (is (= r (resolve e)))
-          22        (ctx/exfer-on mul-a-by-10 add-to-a)
-          9         (ctx/exfer-on mul-b-by-2 :b +)
-          (* 7 3 4) (ctx/exfer-on with-a-b-incd-summed :a :b *))))))
+          22        (ctx/exfer add-to-a mul-a-by-10)
+          9         (ctx/exfer + mul-b-by-2 :b)
+          (* 7 2 3) (ctx/exfer * with-a-b-incd-summed :a :b))))))
