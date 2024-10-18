@@ -24,14 +24,22 @@
   (and (exferrence? obj)
        (= true (::informing? (meta obj)))))
 
+(defn mark-for-variating [obj]
+  (-> obj
+      mark-for-exferring
+      (vary-meta assoc ::variating? true)))
+
+(defn variating-exferrence? [obj]
+  (and (exferrence? obj)
+       (= true (::variating? (meta obj)))))
+
 (defn exfer-on
-  [& exfer-fn+args]
-  (let [[exfer-fn args] (if (fn? (first exfer-fn+args))
-                          [(first exfer-fn+args) (rest exfer-fn+args)]
-                          [nil exfer-fn+args])]
+  [exf-fn & args]
+  (let [[exf-fn args] (if (empty? args)
+                        [identity (list exf-fn)]
+                        [exf-fn args])]
     (mark-for-exferring
-     (cond-> {:args args}
-       (some? exfer-fn) (assoc :exfer exfer-fn)))))
+     {:args args :exfer exf-fn})))
 
 (defn value
   [ctx-val]
@@ -41,20 +49,22 @@
   [thing]
   (or (keyword? thing)
       (and (vector? thing)
-           (every? keyword? thing))))
+           (keyword? (first thing))
+           (every? (some-fn keyword? symbol? number?) thing))))
 
 (defn exfer
-  [& args]
+  [exf-fn & args]
   (apply
    exfer-on
+   exf-fn
    (map
     #(if (ctx-val-path? %) (value %) %)
     args)))
 
 (defn inform
-  [informing & args]
+  [informing informed]
   (mark-for-ctx-informing
-   (assoc (apply exfer args) :informing informing)))
+   (assoc (exfer identity informed) :informing informing)))
 
 (defn with-exferrence-resolver
   [resolver exf]

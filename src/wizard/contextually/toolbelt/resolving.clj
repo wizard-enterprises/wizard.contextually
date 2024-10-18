@@ -12,7 +12,9 @@
     (keyword? ctx-val) [ctx-val]
     (string? ctx-val)  (it-> ctx-val
                          (str/split it #"\.")
-                         (map keyword it)
+                         (map #(try (Integer/parseInt %)
+                                    (catch Exception e (keyword %)))
+                              it)
                          (vec it))
     :else              ctx-val))
 
@@ -38,26 +40,30 @@
 (defn- resolve-ctx-val-in-ctx
   {:style/indent [1 :form]}
   [ctx ctx-val]
-  (if (= :ctx ctx-val)
-    (clean-ctx-of-intermediary-vals ctx)
-    (let [ctx-val (ctx-val-path ctx-val)
-          source  (fetch-in ctx [(first ctx-val)])]
-      (try
-        (if (> (count ctx-val) 1)
-          (fetch-in source (rest ctx-val))
-          source)
-        (catch clojure.lang.ExceptionInfo e
-          (throw (ex-info (str "Could not resolve ctx value: " (ctx-val-name ctx-val))
-                          (merge
-                           (ex-data e)
-                           {:source-name (first ctx-val)
-                            :source      source}))))))))
+  (let [ctx-val (cond-> ctx-val
+                  (and (map? ctx-val) (contains? ctx-val :ctx-val)) :ctx-val)]
+    (if (= :ctx ctx-val)
+     (clean-ctx-of-intermediary-vals ctx)
+     (let [ctx-val (ctx-val-path ctx-val)
+           source  (fetch-in ctx [(first ctx-val)])]
+       (try
+         (if (> (count ctx-val) 1)
+           (fetch-in source (rest ctx-val))
+           source)
+         (catch clojure.lang.ExceptionInfo e
+           (throw (ex-info (str "Could not resolve ctx value: " (ctx-val-name ctx-val))
+                           (merge
+                            (ex-data e)
+                            {:source-name (first ctx-val)
+                             :source      source})))))))))
 
 (defn- resolve-resolvable-in-ctx
   {:style/indent [1 :form]}
   [ctx {:keys [exfer args exferrence-resolver]
-        :or   {exfer identity exferrence-resolver #(%)}
+        :or   {exferrence-resolver #(%)}
         :as   resolvable}]
+  (if (marking/value? resolvable) (do (spyx :whoops resolvable)
+                                      (throw (ex-info "whoops" {:resolvable resolvable}))))
   (exferrence-resolver
    #(apply
     exfer
@@ -69,6 +75,83 @@
   (swap! (fetch-in ctx [::informings]) append informing)
   (resolve-resolvable-in-ctx ctx r))
 
+(defn- indexed-map->vector
+  [m]
+  (reduce-kv insert-up-to [] m))
+
+(defn- variables-match-variation?
+  [variables variation]
+  (let [variation (cond-> variation (map? variation) indexed-map->vector)
+        variables (cond-> variables (not (vector? variables)) vector)]
+    (if (fn? variation)
+      (variation variables)
+      (= variables variation))))
+
+(defn- default-variator
+  [variables variations]
+  (->> (if->> variations map? (into ()) (partition 2))
+       (some
+        (fn [[variation result]]
+          (when (variables-match-variation? variables variation)
+            (if (fn? result) (result variables) result))))))
+
+(defn- resolve-variating-resolvable-in-ctx
+  {:style/indent [1 :form]}
+  [ctx {:keys [variables variations]}]
+  (resolve-resolvable-in-ctx ctx
+    (apply
+     marking/exfer-on
+     (fn [& variables]
+       (let [v (if (= 1 (count variables))
+                 (first variables)
+                 (vec variables))]
+         (default-variator v variations)))
+     ((:walk-and-resolve-when-resolvable ctx) ctx
+      (resolve-resolvable-in-ctx ctx
+        (apply marking/exfer vector variables))))))
+
+(defn- add-informing
+  [x informing]
+  (update x :informing
+          #(append
+            (case %
+              nil?    []
+              vector? %
+              [%])
+            informing)))
+
+(defn- resolve-base-throughout
+  [ctx x]
+  (if-not (contains? x :based-on)
+    [ctx x]
+    (let [based-on  (:based-on x)
+          inf-count (count @(::informings ctx))
+          base      ((:walk-and-resolve-when-resolvable ctx) ctx based-on)
+          ctx       (apply
+                     inform-ctx ctx
+                     (drop inf-count @(::informings ctx)))]
+      [ctx
+       (cond-> x
+         true (assoc :based-on base)
+         (and (map? based-on)
+              (contains? based-on :informing))
+         (add-informing (:informing based-on)))])))
+
+(defn- resolver-for
+  [x]
+  (cond
+    (marking/informing-exferrence? x)
+    resolve-ctx-informing-resolvable
+
+    (marking/variating-exferrence? x)
+    resolve-variating-resolvable-in-ctx
+
+    (marking/value? x)
+    resolve-ctx-val-in-ctx
+
+    (marking/exferrence? x)
+    resolve-resolvable-in-ctx))
+
 (defn- walk-and-resolve-when-resolvable
   {:style/indent [1 :form]}
   [ctx form]
@@ -77,38 +160,27 @@
     (->> form
          (walk/prewalk
           (fn [x]
-            (cond
-              (marking/value? x)
-              (walk-and-resolve-when-resolvable ctx
-                (resolve-ctx-val-in-ctx ctx (:ctx-val x)))
-
-              (marking/informing-exferrence? x)
-              (let [ctx (inform-ctx ctx (:informing x))]
+            (if-not (marking/exferrence? x)
+              x
+              (let [[ctx x] (resolve-base-throughout ctx x)
+                    ctx (cond-> ctx
+                          (marking/informing-exferrence? x)
+                          (inform-ctx (:informing x)))]
                 (walk-and-resolve-when-resolvable ctx
-                  (resolve-ctx-informing-resolvable ctx x)))
-
-              (marking/variating-exferrence? x)
-              (walk-and-resolve-when-resolvable ctx
-                (resolve-variating-resolvable-in-ctx ctx x))
-
-              (marking/exferrence? x)
-              (walk-and-resolve-when-resolvable ctx
-                (resolve-resolvable-in-ctx ctx x))
-
-              :else x))))))
+                  ((resolver-for x) ctx x)))))))))
 
 (defn resolve-throughout
   [ctx form]
-   (let [ctx        (-> ctx
-                        (assoc
-                         ::informings (atom [])
-                         :walk-and-resolve-when-resolvable
-                         walk-and-resolve-when-resolvable))
-         resolved   (walk-and-resolve-when-resolvable ctx form)
-         informings @(::informings ctx)
-         ctx        (reduce inform-ctx ctx informings)
-         ctx        (clean-ctx-of-intermediary-vals ctx)]
-     [ctx resolved]))
+  (let [ctx        (-> ctx
+                       (assoc
+                        ::informings (atom [])
+                        :walk-and-resolve-when-resolvable
+                        walk-and-resolve-when-resolvable))
+        resolved   (walk-and-resolve-when-resolvable ctx form)
+        informings @(::informings ctx)
+        ctx        (reduce inform-ctx ctx informings)
+        ctx        (clean-ctx-of-intermediary-vals ctx)]
+    [ctx resolved]))
 
 (defn resolve-in
   [ctx form]

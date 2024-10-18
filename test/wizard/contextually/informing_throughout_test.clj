@@ -7,10 +7,7 @@
     (testing "ad-hoc informing"
       (testing "informing within exferrence"
         (are [r e] (is (= r (ctx/resolve-in ctx e)))
-          15 (ctx/inform {:a 2}
-               15)
-          15 (ctx/inform {:a 2}
-               (fn [] 15))
+          15 (ctx/inform {:a 2} 15)
           2  (ctx/inform {:a 2} :a)
           2  (ctx/inform {:a 2}
                (ctx/value :a))

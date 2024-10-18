@@ -20,7 +20,12 @@
     (is (= {:x 15 :y 15}
            (ctx/resolve-in
             {:a {:b {:c 15}}}
-            {:x (ctx/value "a.b.c") :y (ctx/value [:a :b :c])}))))
+            {:x (ctx/value "a.b.c") :y (ctx/value [:a :b :c])})))
+
+    (let [r? #(ctx/resolve-in {:x [0 0 [0 [{:z 15}]]]} %)]
+      (is (= 15 (r? (ctx/value [:x 2 1 0 :z]))))
+      (is (= 15 (r? (ctx/value "x.2.1.0.z"))))
+      (is (= 15 (r? (ctx/exfer identity [:x 2 1 0 :z]))))))
 
   (testing "failure on unresolvable value"
     (is (thrown-ex-info?

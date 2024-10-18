@@ -1,6 +1,7 @@
 {:deps
- {org.clojure/clojure {:mvn/version "1.12.0"}
-  hub/wizard.toolbelt {:local/root "../wizard.toolbelt"}}
+ {org.clojure/clojure            {:mvn/version "1.12.0"}
+  org.clojure/math.combinatorics {:mvn/version "0.3.0"}
+  hub/wizard.toolbelt            {:local/root "../wizard.toolbelt"}}
  :aliases
  {:dev
   {:extra-paths ["dev"]}
