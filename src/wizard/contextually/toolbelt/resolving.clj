@@ -155,19 +155,17 @@
 (defn- walk-and-resolve-when-resolvable
   {:style/indent [1 :form]}
   [ctx form]
-  (let [ctx (-> ctx (assoc :walk-and-resolve-when-resolvable
-                           walk-and-resolve-when-resolvable))]
-    (->> form
-         (walk/prewalk
-          (fn [x]
-            (if-not (marking/exferrence? x)
-              x
-              (let [[ctx x] (resolve-base-throughout ctx x)
-                    ctx (cond-> ctx
-                          (marking/informing-exferrence? x)
-                          (inform-ctx (:informing x)))]
-                (walk-and-resolve-when-resolvable ctx
-                  ((resolver-for x) ctx x)))))))))
+  (->> form
+       (walk/prewalk
+        (fn [x]
+          (if-not (marking/exferrence? x)
+            x
+            (let [[ctx x] (resolve-base-throughout ctx x)
+                  ctx     (cond-> ctx
+                            (marking/informing-exferrence? x)
+                            (inform-ctx (:informing x)))]
+              (walk-and-resolve-when-resolvable ctx
+                ((resolver-for x) ctx x))))))))
 
 (defn resolve-throughout
   [ctx form]
